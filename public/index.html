@@ -1,0 +1,1286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>PenguinWorld</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #1a1a2e;
+    font-family: 'Segoe UI', sans-serif;
+    overflow: hidden;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* ── LOGIN SCREEN ── */
+  #loginScreen {
+    position: fixed;
+    inset: 0;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    flex-direction: column;
+    gap: 0;
+  }
+  .login-box {
+    background: rgba(255,255,255,0.05);
+    border: 2px solid rgba(255,255,255,0.15);
+    border-radius: 24px;
+    padding: 40px 48px;
+    width: min(420px, 90vw);
+    backdrop-filter: blur(12px);
+    box-shadow: 0 24px 64px rgba(0,0,0,0.5);
+    text-align: center;
+  }
+  .login-logo {
+    font-size: 48px;
+    margin-bottom: 8px;
+  }
+  .login-box h1 {
+    color: #fff;
+    font-size: 26px;
+    font-weight: 700;
+    margin-bottom: 4px;
+    letter-spacing: 1px;
+  }
+  .login-box p.sub {
+    color: rgba(255,255,255,0.5);
+    font-size: 13px;
+    margin-bottom: 28px;
+  }
+  .login-box label {
+    display: block;
+    color: rgba(255,255,255,0.7);
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+    text-align: left;
+  }
+  .login-box input[type="text"] {
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: 10px;
+    border: 1.5px solid rgba(255,255,255,0.2);
+    background: rgba(255,255,255,0.08);
+    color: #fff;
+    font-size: 15px;
+    outline: none;
+    margin-bottom: 20px;
+    transition: border-color 0.2s;
+  }
+  .login-box input[type="text"]:focus { border-color: #4fc3f7; }
+  .color-label { margin-bottom: 8px !important; }
+  .color-picker {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 28px;
+    justify-content: center;
+  }
+  .color-swatch {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 3px solid transparent;
+    transition: transform 0.15s, border-color 0.15s;
+  }
+  .color-swatch:hover { transform: scale(1.15); }
+  .color-swatch.selected { border-color: #fff; transform: scale(1.2); }
+  .btn-join {
+    width: 100%;
+    padding: 14px;
+    border-radius: 12px;
+    border: none;
+    background: linear-gradient(135deg, #4fc3f7, #0288d1);
+    color: #fff;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 0.5px;
+    transition: opacity 0.2s, transform 0.1s;
+    box-shadow: 0 4px 16px rgba(79,195,247,0.3);
+  }
+  .btn-join:hover { opacity: 0.9; transform: translateY(-1px); }
+  .btn-join:active { transform: translateY(1px); }
+
+  /* ── GAME SCREEN ── */
+  #gameScreen {
+    display: none;
+    position: fixed;
+    inset: 0;
+    flex-direction: column;
+  }
+  #gameScreen.active { display: flex; }
+
+  /* Top bar */
+  #topBar {
+    height: 48px;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    gap: 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    flex-shrink: 0;
+    z-index: 10;
+  }
+  #topBar .logo { color: #4fc3f7; font-weight: 800; font-size: 16px; letter-spacing: 1px; }
+  #topBar .room-name {
+    color: rgba(255,255,255,0.6);
+    font-size: 13px;
+    background: rgba(255,255,255,0.08);
+    padding: 3px 10px;
+    border-radius: 20px;
+  }
+  #topBar .spacer { flex: 1; }
+  #topBar .online-badge {
+    color: #4caf50;
+    font-size: 12px;
+    font-weight: 600;
+    background: rgba(76,175,80,0.12);
+    padding: 3px 10px;
+    border-radius: 20px;
+    border: 1px solid rgba(76,175,80,0.3);
+  }
+
+  /* Main area */
+  #mainArea {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* Canvas wrapper */
+  #canvasWrapper {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    cursor: crosshair;
+  }
+  #gameCanvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Fade overlay for room transitions */
+  #fadeOverlay {
+    position: absolute;
+    inset: 0;
+    background: #000;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s;
+    z-index: 5;
+  }
+  #fadeOverlay.fade-in { opacity: 1; }
+
+  /* Side panel */
+  #sidePanel {
+    width: 200px;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(8px);
+    border-left: 1px solid rgba(255,255,255,0.08);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+  }
+  .panel-title {
+    color: rgba(255,255,255,0.5);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 12px 14px 8px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  #playerList {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 0;
+  }
+  #playerList::-webkit-scrollbar { width: 4px; }
+  #playerList::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
+  .player-entry {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    font-size: 13px;
+    color: rgba(255,255,255,0.75);
+  }
+  .player-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .player-entry.is-self { color: #fff; font-weight: 600; }
+
+  /* Room selector */
+  .rooms-section {
+    border-top: 1px solid rgba(255,255,255,0.06);
+    padding: 10px 0 6px;
+  }
+  .rooms-section .panel-title { border: none; padding-bottom: 6px; }
+  .room-btn {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 14px;
+    cursor: pointer;
+    color: rgba(255,255,255,0.65);
+    font-size: 13px;
+    border-radius: 8px;
+    margin: 2px 6px;
+    transition: background 0.15s, color 0.15s;
+    border: 1.5px solid transparent;
+  }
+  .room-btn:hover { background: rgba(255,255,255,0.07); color: #fff; }
+  .room-btn.active {
+    background: rgba(79,195,247,0.12);
+    color: #4fc3f7;
+    border-color: rgba(79,195,247,0.3);
+  }
+  .room-btn .room-icon { font-size: 15px; }
+  .room-count {
+    background: rgba(255,255,255,0.1);
+    color: rgba(255,255,255,0.5);
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 10px;
+    min-width: 20px;
+    text-align: center;
+  }
+  .room-btn.active .room-count { background: rgba(79,195,247,0.2); color: #4fc3f7; }
+
+  /* Chat bar */
+  #chatBar {
+    height: 52px;
+    background: rgba(0,0,0,0.7);
+    border-top: 1px solid rgba(255,255,255,0.08);
+    display: flex;
+    align-items: center;
+    padding: 0 14px;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+  #chatInput {
+    flex: 1;
+    background: rgba(255,255,255,0.08);
+    border: 1.5px solid rgba(255,255,255,0.15);
+    border-radius: 24px;
+    padding: 8px 18px;
+    color: #fff;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  #chatInput:focus { border-color: #4fc3f7; }
+  #chatInput::placeholder { color: rgba(255,255,255,0.3); }
+  #chatSend {
+    background: linear-gradient(135deg, #4fc3f7, #0288d1);
+    border: none;
+    border-radius: 50%;
+    width: 36px; height: 36px;
+    cursor: pointer;
+    color: #fff;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: opacity 0.2s;
+  }
+  #chatSend:hover { opacity: 0.85; }
+
+  /* Mobile adjustments */
+  @media (max-width: 600px) {
+    #sidePanel { width: 140px; }
+    .login-box { padding: 28px 24px; }
+    #topBar .logo { font-size: 14px; }
+  }
+  @media (max-width: 420px) {
+    #sidePanel { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div id="loginScreen">
+  <div class="login-box">
+    <div class="login-logo">🐧</div>
+    <h1>PenguinWorld</h1>
+    <p class="sub">The classic hangout, reborn.</p>
+    <label for="usernameInput">Your Penguin Name</label>
+    <input type="text" id="usernameInput" placeholder="e.g. IcyWaddler42" maxlength="20" autocomplete="off">
+    <label class="color-label">Pick a Color</label>
+    <div class="color-picker" id="colorPicker"></div>
+    <button class="btn-join" id="joinBtn">Waddle In!</button>
+  </div>
+</div>
+
+<!-- GAME SCREEN -->
+<div id="gameScreen">
+  <div id="topBar">
+    <span class="logo">🐧 PenguinWorld</span>
+    <span class="room-name" id="currentRoomLabel">Town Square</span>
+    <span class="spacer"></span>
+    <span class="online-badge" id="onlineBadge">● 1 online</span>
+  </div>
+  <div id="mainArea">
+    <div id="canvasWrapper">
+      <canvas id="gameCanvas"></canvas>
+      <div id="fadeOverlay"></div>
+    </div>
+    <div id="sidePanel">
+      <div class="panel-title">In This Room</div>
+      <div id="playerList"></div>
+      <div class="rooms-section">
+        <div class="panel-title">Rooms</div>
+        <div class="room-btn active" data-room="town" id="roomBtn-town">
+          <span><span class="room-icon">🏘️</span> Town</span>
+          <span class="room-count" id="count-town">0</span>
+        </div>
+        <div class="room-btn" data-room="beach" id="roomBtn-beach">
+          <span><span class="room-icon">🏖️</span> Beach</span>
+          <span class="room-count" id="count-beach">0</span>
+        </div>
+        <div class="room-btn" data-room="dance" id="roomBtn-dance">
+          <span><span class="room-icon">🕺</span> Dance</span>
+          <span class="room-count" id="count-dance">0</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="chatBar">
+    <input type="text" id="chatInput" placeholder="Say something... (Enter to send)" maxlength="80" autocomplete="off">
+    <button id="chatSend">➤</button>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+// ─────────────────────────────────────────────
+//  CONSTANTS & STATE
+// ─────────────────────────────────────────────
+const AVATAR_COLORS = [
+  '#e74c3c','#e67e22','#f1c40f','#2ecc71',
+  '#1abc9c','#3498db','#9b59b6','#e91e63',
+  '#00bcd4','#ff5722','#795548','#607d8b',
+];
+
+const ROOM_NAMES = { town: 'Town Square', beach: 'Beach', dance: 'Dance Floor' };
+const ROOM_PORTALS = {
+  town:  [
+    { x: 650, y: 520, w: 80, h: 50, target: 'beach',  label: '🏖️ Beach',      color: '#f39c12' },
+    { x: 650, y: 430, w: 80, h: 50, target: 'dance',  label: '🕺 Dance',      color: '#9b59b6' },
+  ],
+  beach: [
+    { x: 60,  y: 480, w: 80, h: 50, target: 'town',   label: '🏘️ Town',       color: '#27ae60' },
+    { x: 660, y: 480, w: 80, h: 50, target: 'dance',  label: '🕺 Dance',      color: '#9b59b6' },
+  ],
+  dance: [
+    { x: 60,  y: 480, w: 80, h: 50, target: 'town',   label: '🏘️ Town',       color: '#27ae60' },
+    { x: 660, y: 480, w: 80, h: 50, target: 'beach',  label: '🏖️ Beach',      color: '#f39c12' },
+  ],
+};
+
+const W = 800, H = 600;
+
+// Offscreen render buffers for each room (drawn once)
+const roomBgs = {};
+
+let socket;
+let selfId = null;
+let selfUsername = '';
+let selfColor = AVATAR_COLORS[0];
+let currentRoom = 'town';
+
+// players map: id -> { id, username, color, x, y, room, message, messageTime,
+//                      renderX, renderY, facing, animTick, walking }
+const players = {};
+let selfPlayer = null;
+
+let lastTime = 0;
+let animFrame;
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+// ─────────────────────────────────────────────
+//  LOGIN UI
+// ─────────────────────────────────────────────
+const colorPicker = document.getElementById('colorPicker');
+AVATAR_COLORS.forEach((c, i) => {
+  const sw = document.createElement('div');
+  sw.className = 'color-swatch' + (i === 0 ? ' selected' : '');
+  sw.style.background = c;
+  sw.dataset.color = c;
+  sw.addEventListener('click', () => {
+    document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+    sw.classList.add('selected');
+    selfColor = c;
+    // live preview of selection
+  });
+  colorPicker.appendChild(sw);
+});
+
+document.getElementById('joinBtn').addEventListener('click', doJoin);
+document.getElementById('usernameInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doJoin();
+});
+
+function doJoin() {
+  const name = document.getElementById('usernameInput').value.trim();
+  if (!name) { document.getElementById('usernameInput').focus(); return; }
+  selfUsername = name;
+  initSocket();
+}
+
+// ─────────────────────────────────────────────
+//  SOCKET
+// ─────────────────────────────────────────────
+function initSocket() {
+  socket = io();
+
+  socket.on('connect', () => {
+    socket.emit('join', { username: selfUsername, color: selfColor });
+  });
+
+  socket.on('init', ({ self, players: roomPlayers, roomCounts }) => {
+    selfId = self.id;
+    currentRoom = self.room;
+
+    // Bootstrap players
+    for (const p of roomPlayers) {
+      addOrUpdatePlayer(p);
+    }
+    // Ensure self is there
+    if (!players[selfId]) addOrUpdatePlayer(self);
+    selfPlayer = players[selfId];
+
+    updateRoomCounts(roomCounts);
+    showGame();
+    startLoop();
+  });
+
+  socket.on('playerJoined', (p) => {
+    addOrUpdatePlayer(p);
+    refreshPlayerList();
+    updateOnlineBadge();
+  });
+
+  socket.on('playerLeft', (id) => {
+    delete players[id];
+    refreshPlayerList();
+    updateOnlineBadge();
+  });
+
+  socket.on('playerMoved', ({ id, x, y }) => {
+    if (players[id]) {
+      players[id].targetX = x;
+      players[id].targetY = y;
+      players[id].walking = true;
+    }
+  });
+
+  socket.on('playerChat', ({ id, message }) => {
+    if (players[id]) {
+      players[id].message = message;
+      players[id].messageTime = Date.now();
+    }
+  });
+
+  socket.on('roomChanged', ({ room, players: roomPlayers, self }) => {
+    currentRoom = room;
+    // Clear players
+    for (const id in players) delete players[id];
+    for (const p of roomPlayers) addOrUpdatePlayer(p);
+    selfPlayer = players[selfId] || null;
+    if (self && !players[selfId]) {
+      addOrUpdatePlayer(self);
+      selfPlayer = players[selfId];
+    }
+    updateRoomLabel();
+    refreshPlayerList();
+    updateOnlineBadge();
+    updateRoomButtons();
+    endFade();
+  });
+
+  socket.on('roomCounts', (counts) => {
+    updateRoomCounts(counts);
+  });
+
+  socket.on('disconnect', () => {
+    console.warn('Disconnected');
+  });
+}
+
+function addOrUpdatePlayer(data) {
+  if (players[data.id]) {
+    Object.assign(players[data.id], data);
+  } else {
+    players[data.id] = {
+      ...data,
+      renderX: data.x,
+      renderY: data.y,
+      targetX: data.x,
+      targetY: data.y,
+      facing: 1,
+      animTick: 0,
+      walking: false,
+      message: data.message || '',
+      messageTime: data.messageTime || 0,
+    };
+  }
+  refreshPlayerList();
+  updateOnlineBadge();
+}
+
+// ─────────────────────────────────────────────
+//  GAME SCREEN
+// ─────────────────────────────────────────────
+function showGame() {
+  document.getElementById('loginScreen').style.display = 'none';
+  const gs = document.getElementById('gameScreen');
+  gs.classList.add('active');
+  updateRoomLabel();
+  updateRoomButtons();
+  resizeCanvas();
+}
+
+function updateRoomLabel() {
+  document.getElementById('currentRoomLabel').textContent = ROOM_NAMES[currentRoom] || currentRoom;
+}
+
+function updateRoomButtons() {
+  document.querySelectorAll('.room-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.room === currentRoom);
+  });
+}
+
+function updateOnlineBadge() {
+  const count = Object.keys(players).length;
+  document.getElementById('onlineBadge').textContent = `● ${count} online`;
+}
+
+function updateRoomCounts(counts) {
+  for (const [room, n] of Object.entries(counts)) {
+    const el = document.getElementById(`count-${room}`);
+    if (el) el.textContent = n;
+  }
+}
+
+function refreshPlayerList() {
+  const list = document.getElementById('playerList');
+  list.innerHTML = '';
+  for (const p of Object.values(players)) {
+    const div = document.createElement('div');
+    div.className = 'player-entry' + (p.id === selfId ? ' is-self' : '');
+    div.innerHTML = `<span class="player-dot" style="background:${p.color}"></span>
+      <span>${escHtml(p.username)}${p.id === selfId ? ' (you)' : ''}</span>`;
+    list.appendChild(div);
+  }
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ─────────────────────────────────────────────
+//  CANVAS & RESIZE
+// ─────────────────────────────────────────────
+function resizeCanvas() {
+  const wrapper = document.getElementById('canvasWrapper');
+  canvas.width = wrapper.clientWidth;
+  canvas.height = wrapper.clientHeight;
+  // Invalidate bg caches
+  for (const k in roomBgs) delete roomBgs[k];
+}
+window.addEventListener('resize', resizeCanvas);
+
+// ─────────────────────────────────────────────
+//  BACKGROUND DRAWING (per room, cached)
+// ─────────────────────────────────────────────
+function getRoomBg(room) {
+  const cw = canvas.width, ch = canvas.height;
+  const key = `${room}_${cw}_${ch}`;
+  if (roomBgs[key]) return roomBgs[key];
+  const off = document.createElement('canvas');
+  off.width = cw; off.height = ch;
+  const c = off.getContext('2d');
+  drawRoomBg(c, room, cw, ch);
+  roomBgs[key] = off;
+  return off;
+}
+
+function drawRoomBg(c, room, cw, ch) {
+  // Scale factor from logical 800x600 to canvas size
+  const sx = cw / W, sy = ch / H;
+
+  if (room === 'town') {
+    // Sky/ground gradient
+    const grad = c.createLinearGradient(0, 0, 0, ch);
+    grad.addColorStop(0, '#87ceeb');
+    grad.addColorStop(0.55, '#98d8a0');
+    grad.addColorStop(0.55, '#5a9e60');
+    grad.addColorStop(1, '#4a8550');
+    c.fillStyle = grad;
+    c.fillRect(0, 0, cw, ch);
+
+    // Paths (cross shape)
+    c.fillStyle = '#c8b89a';
+    c.fillRect(cw*0.35, 0, cw*0.3, ch);
+    c.fillRect(0, ch*0.4, cw, ch*0.2);
+
+    // Path edges
+    c.strokeStyle = '#b0a080';
+    c.lineWidth = 2 * sx;
+    c.setLineDash([10*sx, 8*sx]);
+    c.beginPath(); c.moveTo(cw*0.35, 0); c.lineTo(cw*0.35, ch); c.stroke();
+    c.beginPath(); c.moveTo(cw*0.65, 0); c.lineTo(cw*0.65, ch); c.stroke();
+    c.beginPath(); c.moveTo(0, ch*0.4); c.lineTo(cw, ch*0.4); c.stroke();
+    c.beginPath(); c.moveTo(0, ch*0.6); c.lineTo(cw, ch*0.6); c.stroke();
+    c.setLineDash([]);
+
+    // Town hall building
+    c.fillStyle = '#d4a574';
+    c.fillRect(50*sx, 40*sy, 160*sx, 120*sy);
+    c.fillStyle = '#c0392b';
+    c.beginPath();
+    c.moveTo(40*sx, 40*sy);
+    c.lineTo(130*sx, 0);
+    c.lineTo(220*sx, 40*sy);
+    c.closePath(); c.fill();
+    c.fillStyle = '#795548';
+    c.fillRect(105*sx, 110*sy, 50*sx, 50*sy); // door
+    c.fillStyle = '#ffd54f';
+    for (let i = 0; i < 3; i++) {
+      c.fillRect((60+i*45)*sx, 60*sy, 35*sx, 30*sy); // windows
+    }
+    c.fillStyle = '#fff'; c.font = `bold ${11*sx}px sans-serif`;
+    c.textAlign = 'center';
+    c.fillText('TOWN HALL', 130*sx, 175*sy);
+
+    // Fountain
+    c.fillStyle = '#5dade2';
+    c.beginPath(); c.arc(400*sx, 300*sy, 40*sx, 0, Math.PI*2); c.fill();
+    c.fillStyle = '#aed6f1';
+    c.beginPath(); c.arc(400*sx, 300*sy, 25*sx, 0, Math.PI*2); c.fill();
+    c.fillStyle = '#85c1e9';
+    c.beginPath(); c.arc(400*sx, 300*sy, 10*sx, 0, Math.PI*2); c.fill();
+    c.strokeStyle = '#2980b9'; c.lineWidth = 3*sx;
+    c.beginPath(); c.arc(400*sx, 300*sy, 40*sx, 0, Math.PI*2); c.stroke();
+
+    // Trees
+    drawTree(c, 580*sx, 100*sy, sx*0.9);
+    drawTree(c, 650*sx, 150*sy, sx*0.8);
+    drawTree(c, 100*sx, 350*sy, sx*0.75);
+    drawTree(c, 680*sx, 350*sy, sx*0.85);
+    drawTree(c, 150*sx, 100*sy, sx*0.7);
+
+    // Portals
+    drawPortals(c, room, sx, sy);
+
+  } else if (room === 'beach') {
+    // Sky
+    const skyGrad = c.createLinearGradient(0, 0, 0, ch*0.5);
+    skyGrad.addColorStop(0, '#87ceeb');
+    skyGrad.addColorStop(1, '#b0e0ff');
+    c.fillStyle = skyGrad;
+    c.fillRect(0, 0, cw, ch*0.5);
+
+    // Ocean
+    const seaGrad = c.createLinearGradient(0, ch*0.45, 0, ch);
+    seaGrad.addColorStop(0, '#1e90ff');
+    seaGrad.addColorStop(1, '#006994');
+    c.fillStyle = seaGrad;
+    c.fillRect(0, ch*0.45, cw, ch*0.55);
+
+    // Sand
+    const sandGrad = c.createLinearGradient(0, ch*0.42, 0, ch*0.62);
+    sandGrad.addColorStop(0, '#f5deb3');
+    sandGrad.addColorStop(1, '#deb887');
+    c.fillStyle = sandGrad;
+    c.beginPath();
+    c.moveTo(0, ch*0.48);
+    c.bezierCurveTo(cw*0.25, ch*0.42, cw*0.75, ch*0.44, cw, ch*0.46);
+    c.lineTo(cw, ch);
+    c.lineTo(0, ch);
+    c.closePath();
+    c.fill();
+
+    // Waves
+    c.strokeStyle = 'rgba(255,255,255,0.5)';
+    c.lineWidth = 2*sx;
+    for (let i = 0; i < 4; i++) {
+      c.beginPath();
+      const wy = (ch*0.5 + i*20*sy);
+      c.moveTo(0, wy);
+      c.bezierCurveTo(cw*0.25, wy-10*sy, cw*0.5, wy+10*sy, cw*0.75, wy);
+      c.bezierCurveTo(cw*0.875, wy-5*sy, cw, wy+5*sy, cw, wy);
+      c.stroke();
+    }
+
+    // Sun
+    c.fillStyle = '#ffd700';
+    c.beginPath(); c.arc(700*sx, 80*sy, 45*sx, 0, Math.PI*2); c.fill();
+    c.fillStyle = 'rgba(255,215,0,0.2)';
+    c.beginPath(); c.arc(700*sx, 80*sy, 65*sx, 0, Math.PI*2); c.fill();
+
+    // Umbrellas
+    drawUmbrella(c, 180*sx, 370*sy, '#e74c3c', sx);
+    drawUmbrella(c, 580*sx, 380*sy, '#9b59b6', sx);
+
+    // Sandcastle
+    c.fillStyle = '#deb887';
+    c.fillRect(370*sx, 420*sy, 60*sx, 40*sy);
+    c.fillRect(360*sx, 410*sy, 20*sx, 15*sy);
+    c.fillRect(400*sx, 408*sy, 20*sx, 15*sy);
+    c.fillRect(440*sx, 412*sy, 15*sx, 12*sy);
+    c.fillStyle = '#c19a6b';
+    c.fillRect(385*sx, 440*sy, 30*sx, 20*sy);
+
+    // Palm tree
+    drawPalm(c, 120*sx, 400*sy, sx);
+    drawPalm(c, 700*sx, 390*sy, sx);
+
+    // Portals
+    drawPortals(c, room, sx, sy);
+
+    // Clouds
+    drawCloud(c, 100*sx, 60*sy, sx*1.2);
+    drawCloud(c, 350*sx, 40*sy, sx*0.9);
+    drawCloud(c, 520*sx, 80*sy, sx);
+
+  } else if (room === 'dance') {
+    // Dark floor
+    c.fillStyle = '#1a0533';
+    c.fillRect(0, 0, cw, ch);
+
+    // Disco floor grid
+    const tileW = cw / 10, tileH = ch / 8;
+    const discoColors = ['#e74c3c','#e67e22','#f1c40f','#2ecc71','#1abc9c',
+                         '#3498db','#9b59b6','#e91e63','#00bcd4','#ff5722'];
+    for (let row = 0; row < 8; row++) {
+      for (let col = 0; col < 10; col++) {
+        const col1 = discoColors[(row + col) % discoColors.length];
+        c.fillStyle = col1 + '33'; // 20% opacity
+        c.fillRect(col*tileW, row*tileH, tileW-1, tileH-1);
+        c.strokeStyle = col1 + '55';
+        c.lineWidth = 1;
+        c.strokeRect(col*tileW, row*tileH, tileW-1, tileH-1);
+      }
+    }
+
+    // Stage at top
+    c.fillStyle = '#2d0a4e';
+    c.fillRect(0, 0, cw, ch*0.22);
+    c.fillStyle = '#6a0dad';
+    c.fillRect(cw*0.2, ch*0.02, cw*0.6, ch*0.18);
+
+    // Stage lights
+    const lightColors = ['#ff0080','#00ffff','#ffff00','#ff6600','#00ff80'];
+    for (let i = 0; i < 5; i++) {
+      const lx = (cw*0.25 + i*(cw*0.125));
+      c.fillStyle = lightColors[i];
+      c.beginPath(); c.arc(lx, ch*0.04, 8*sx, 0, Math.PI*2); c.fill();
+      // Light cone
+      c.fillStyle = lightColors[i] + '22';
+      c.beginPath();
+      c.moveTo(lx, ch*0.04);
+      c.lineTo(lx - 60*sx, ch*0.45);
+      c.lineTo(lx + 60*sx, ch*0.45);
+      c.closePath(); c.fill();
+    }
+
+    // DJ booth
+    c.fillStyle = '#3d0070';
+    c.fillRect(cw*0.36, ch*0.04, cw*0.28, ch*0.13);
+    c.fillStyle = '#5a0099';
+    c.fillRect(cw*0.38, ch*0.05, cw*0.24, ch*0.1);
+    // Turntable
+    c.fillStyle = '#222';
+    c.beginPath(); c.arc(cw*0.42, ch*0.1, 20*sx, 0, Math.PI*2); c.fill();
+    c.beginPath(); c.arc(cw*0.58, ch*0.1, 20*sx, 0, Math.PI*2); c.fill();
+    c.fillStyle = '#555';
+    c.beginPath(); c.arc(cw*0.42, ch*0.1, 5*sx, 0, Math.PI*2); c.fill();
+    c.beginPath(); c.arc(cw*0.58, ch*0.1, 5*sx, 0, Math.PI*2); c.fill();
+
+    // Speaker boxes
+    c.fillStyle = '#222';
+    c.fillRect(cw*0.04, ch*0.02, 60*sx, 100*sy);
+    c.fillRect(cw*0.88, ch*0.02, 60*sx, 100*sy);
+    c.strokeStyle = '#444'; c.lineWidth = 2*sx;
+    for (let i = 0; i < 3; i++) {
+      c.beginPath(); c.arc(cw*0.04+30*sx, ch*0.04+i*30*sy, 10*sx, 0, Math.PI*2); c.stroke();
+      c.beginPath(); c.arc(cw*0.88+30*sx, ch*0.04+i*30*sy, 10*sx, 0, Math.PI*2); c.stroke();
+    }
+
+    // Mirror ball glow
+    const discoBallGrad = c.createRadialGradient(cw*0.5, ch*0.12, 0, cw*0.5, ch*0.12, cw*0.35);
+    discoBallGrad.addColorStop(0, 'rgba(255,255,255,0.08)');
+    discoBallGrad.addColorStop(1, 'rgba(0,0,0,0)');
+    c.fillStyle = discoBallGrad;
+    c.fillRect(0, 0, cw, ch);
+
+    // Portals
+    drawPortals(c, room, sx, sy);
+  }
+}
+
+function drawTree(c, x, y, scale) {
+  c.fillStyle = '#5d4037';
+  c.fillRect(x-6*scale, y-40*scale, 12*scale, 40*scale);
+  c.fillStyle = '#27ae60';
+  c.beginPath(); c.arc(x, y-50*scale, 28*scale, 0, Math.PI*2); c.fill();
+  c.fillStyle = '#2ecc71';
+  c.beginPath(); c.arc(x-8*scale, y-60*scale, 18*scale, 0, Math.PI*2); c.fill();
+  c.beginPath(); c.arc(x+10*scale, y-55*scale, 16*scale, 0, Math.PI*2); c.fill();
+}
+
+function drawUmbrella(c, x, y, color, sx) {
+  // Pole
+  c.strokeStyle = '#888'; c.lineWidth = 3*sx;
+  c.beginPath(); c.moveTo(x, y); c.lineTo(x, y-90*sx); c.stroke();
+  // Canopy
+  c.fillStyle = color;
+  c.beginPath(); c.arc(x, y-90*sx, 55*sx, Math.PI, 0); c.fill();
+  c.fillStyle = '#fff';
+  c.beginPath(); c.arc(x, y-90*sx, 55*sx, Math.PI+0.4, Math.PI*2-0.4); c.fill();
+  // Stripes
+  for (let i = 0; i < 4; i++) {
+    const angle = Math.PI + (i+0.5) * (Math.PI/4);
+    c.strokeStyle = color; c.lineWidth = 8*sx;
+    c.beginPath();
+    c.moveTo(x, y-90*sx);
+    c.lineTo(x + Math.cos(angle)*55*sx, y-90*sx + Math.sin(angle)*55*sx);
+    c.stroke();
+  }
+}
+
+function drawPalm(c, x, y, sx) {
+  // Trunk
+  c.strokeStyle = '#a0522d'; c.lineWidth = 12*sx;
+  c.beginPath();
+  c.moveTo(x, y);
+  c.bezierCurveTo(x+20*sx, y-60*sx, x-10*sx, y-120*sx, x, y-150*sx);
+  c.stroke();
+  // Fronds
+  c.strokeStyle = '#228b22'; c.lineWidth = 4*sx;
+  const fronds = [[-60,-20],[60,-10],[-40,-50],[40,-60],[0,-70],[-70,-50],[70,-45]];
+  for (const [dx,dy] of fronds) {
+    c.beginPath();
+    c.moveTo(x, y-150*sx);
+    c.quadraticCurveTo(x+dx*0.5*sx, y+(dy-40)*sx, x+dx*sx, y+dy*sx);
+    c.stroke();
+    // leaves
+    c.fillStyle = '#32cd32';
+    c.beginPath(); c.ellipse(x+dx*sx, y+dy*sx, 18*sx, 6*sx, Math.atan2(dy,dx), 0, Math.PI*2); c.fill();
+  }
+  // Coconuts
+  c.fillStyle = '#8b4513';
+  c.beginPath(); c.arc(x-10*sx, y-145*sx, 7*sx, 0, Math.PI*2); c.fill();
+  c.beginPath(); c.arc(x+12*sx, y-150*sx, 6*sx, 0, Math.PI*2); c.fill();
+}
+
+function drawCloud(c, x, y, scale) {
+  c.fillStyle = 'rgba(255,255,255,0.85)';
+  c.beginPath(); c.arc(x, y, 25*scale, 0, Math.PI*2); c.fill();
+  c.beginPath(); c.arc(x+30*scale, y+5*scale, 20*scale, 0, Math.PI*2); c.fill();
+  c.beginPath(); c.arc(x-25*scale, y+8*scale, 18*scale, 0, Math.PI*2); c.fill();
+  c.beginPath(); c.arc(x+10*scale, y-12*scale, 16*scale, 0, Math.PI*2); c.fill();
+}
+
+function drawPortals(c, room, sx, sy) {
+  const portals = ROOM_PORTALS[room] || [];
+  for (const p of portals) {
+    // Glow
+    const grad = c.createRadialGradient(
+      (p.x+p.w/2)*sx, (p.y+p.h/2)*sy, 0,
+      (p.x+p.w/2)*sx, (p.y+p.h/2)*sy, p.w*sx
+    );
+    grad.addColorStop(0, p.color + 'aa');
+    grad.addColorStop(1, p.color + '00');
+    c.fillStyle = grad;
+    c.fillRect((p.x-p.w/2)*sx, (p.y-p.h/2)*sy, p.w*2*sx, p.h*2*sy);
+
+    // Door frame
+    c.fillStyle = p.color + 'cc';
+    const rx = p.x*sx, ry = p.y*sy, rw = p.w*sx, rh = p.h*sy;
+    roundRect(c, rx, ry, rw, rh, 8*sx);
+    c.fill();
+    c.strokeStyle = '#fff';
+    c.lineWidth = 2*sx;
+    roundRect(c, rx, ry, rw, rh, 8*sx);
+    c.stroke();
+
+    // Label
+    c.fillStyle = '#fff';
+    c.font = `bold ${11*sx}px sans-serif`;
+    c.textAlign = 'center';
+    c.fillText(p.label, (p.x + p.w/2)*sx, (p.y + p.h/2 + 4)*sy);
+  }
+}
+
+function roundRect(c, x, y, w, h, r) {
+  c.beginPath();
+  c.moveTo(x+r, y);
+  c.lineTo(x+w-r, y);
+  c.quadraticCurveTo(x+w, y, x+w, y+r);
+  c.lineTo(x+w, y+h-r);
+  c.quadraticCurveTo(x+w, y+h, x+w-r, y+h);
+  c.lineTo(x+r, y+h);
+  c.quadraticCurveTo(x, y+h, x, y+h-r);
+  c.lineTo(x, y+r);
+  c.quadraticCurveTo(x, y, x+r, y);
+  c.closePath();
+}
+
+// ─────────────────────────────────────────────
+//  AVATAR DRAWING
+// ─────────────────────────────────────────────
+function drawAvatar(c, p, cw, ch, time) {
+  const sx = cw / W, sy = ch / H;
+  const x = p.renderX * sx, y = p.renderY * sy;
+  const isSelf = (p.id === selfId);
+  const scale = sx * 0.9;
+
+  // Walk bob
+  let bob = 0;
+  if (p.walking) {
+    bob = Math.sin(p.animTick * 0.25) * 3 * scale;
+  }
+
+  const bodyY = y + bob;
+
+  // Shadow
+  c.fillStyle = 'rgba(0,0,0,0.18)';
+  c.beginPath();
+  c.ellipse(x, y + 2*scale, 18*scale, 6*scale, 0, 0, Math.PI*2);
+  c.fill();
+
+  // Body (penguin-ish oval)
+  c.fillStyle = p.color;
+  c.beginPath();
+  c.ellipse(x, bodyY - 16*scale, 16*scale, 20*scale, 0, 0, Math.PI*2);
+  c.fill();
+
+  // Belly (white)
+  c.fillStyle = '#fff';
+  c.beginPath();
+  c.ellipse(x, bodyY - 14*scale, 9*scale, 13*scale, 0, 0, Math.PI*2);
+  c.fill();
+
+  // Head
+  c.fillStyle = p.color;
+  c.beginPath();
+  c.ellipse(x, bodyY - 36*scale, 13*scale, 13*scale, 0, 0, Math.PI*2);
+  c.fill();
+
+  // Eyes
+  c.fillStyle = '#fff';
+  c.beginPath(); c.ellipse(x - 4.5*scale, bodyY - 38*scale, 4*scale, 4.5*scale, -0.2, 0, Math.PI*2); c.fill();
+  c.beginPath(); c.ellipse(x + 4.5*scale, bodyY - 38*scale, 4*scale, 4.5*scale, 0.2, 0, Math.PI*2); c.fill();
+  c.fillStyle = '#222';
+  c.beginPath(); c.arc(x - 3.5*scale, bodyY - 38*scale, 2.2*scale, 0, Math.PI*2); c.fill();
+  c.beginPath(); c.arc(x + 5*scale, bodyY - 38*scale, 2.2*scale, 0, Math.PI*2); c.fill();
+  // Eye shine
+  c.fillStyle = '#fff';
+  c.beginPath(); c.arc(x - 2.8*scale, bodyY - 39.5*scale, 1*scale, 0, Math.PI*2); c.fill();
+  c.beginPath(); c.arc(x + 5.7*scale, bodyY - 39.5*scale, 1*scale, 0, Math.PI*2); c.fill();
+
+  // Beak
+  c.fillStyle = '#f39c12';
+  c.beginPath();
+  c.moveTo(x, bodyY - 34*scale);
+  c.lineTo(x - 4*scale, bodyY - 30.5*scale);
+  c.lineTo(x + 4*scale, bodyY - 30.5*scale);
+  c.closePath(); c.fill();
+
+  // Wings
+  const wingAngle = p.walking ? Math.sin(p.animTick * 0.25) * 0.4 : 0;
+  c.fillStyle = p.color;
+  // Left wing
+  c.save();
+  c.translate(x - 14*scale, bodyY - 18*scale);
+  c.rotate(-0.3 - wingAngle);
+  c.beginPath();
+  c.ellipse(0, 0, 6*scale, 14*scale, 0, 0, Math.PI*2);
+  c.fill();
+  c.restore();
+  // Right wing
+  c.save();
+  c.translate(x + 14*scale, bodyY - 18*scale);
+  c.rotate(0.3 + wingAngle);
+  c.beginPath();
+  c.ellipse(0, 0, 6*scale, 14*scale, 0, 0, Math.PI*2);
+  c.fill();
+  c.restore();
+
+  // Feet
+  c.fillStyle = '#f39c12';
+  const footWaddle = p.walking ? Math.sin(p.animTick * 0.25) * 5 * scale : 0;
+  c.beginPath();
+  c.ellipse(x - 7*scale + footWaddle, bodyY + 4*scale, 7*scale, 4*scale, -0.3, 0, Math.PI*2);
+  c.fill();
+  c.beginPath();
+  c.ellipse(x + 7*scale - footWaddle, bodyY + 4*scale, 7*scale, 4*scale, 0.3, 0, Math.PI*2);
+  c.fill();
+
+  // Self ring
+  if (isSelf) {
+    c.strokeStyle = '#fff';
+    c.lineWidth = 2*scale;
+    c.setLineDash([4*scale, 3*scale]);
+    c.beginPath();
+    c.ellipse(x, y + 2*scale, 20*scale, 7*scale, 0, 0, Math.PI*2);
+    c.stroke();
+    c.setLineDash([]);
+  }
+
+  // Name tag
+  c.font = `bold ${10*scale}px sans-serif`;
+  c.textAlign = 'center';
+  const nameW = c.measureText(p.username).width + 10*scale;
+  const nameX = x - nameW/2, nameY = bodyY - 58*scale;
+  c.fillStyle = 'rgba(0,0,0,0.55)';
+  roundRect(c, nameX, nameY - 13*scale, nameW, 16*scale, 4*scale);
+  c.fill();
+  c.fillStyle = '#fff';
+  c.fillText(p.username, x, nameY);
+
+  // Chat bubble
+  if (p.message && p.messageTime) {
+    const elapsed = Date.now() - p.messageTime;
+    if (elapsed < 4000) {
+      const alpha = elapsed > 3000 ? 1 - (elapsed - 3000) / 1000 : 1;
+      drawChatBubble(c, p.message, x, nameY - 18*scale, scale, alpha);
+    } else {
+      p.message = '';
+    }
+  }
+}
+
+function drawChatBubble(c, text, x, y, scale, alpha) {
+  const padding = 8 * scale;
+  const maxW = 160 * scale;
+  c.font = `${10*scale}px sans-serif`;
+
+  // Word-wrap
+  const words = text.split(' ');
+  const lines = [];
+  let line = '';
+  for (const word of words) {
+    const test = line + (line ? ' ' : '') + word;
+    if (c.measureText(test).width > maxW && line) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = test;
+    }
+  }
+  if (line) lines.push(line);
+
+  const lineH = 13 * scale;
+  const bubbleW = Math.min(maxW, Math.max(...lines.map(l => c.measureText(l).width))) + padding*2;
+  const bubbleH = lines.length * lineH + padding * 1.5;
+  const bx = x - bubbleW/2;
+  const by = y - bubbleH - 8*scale;
+
+  c.save();
+  c.globalAlpha = alpha;
+
+  // Bubble body
+  c.fillStyle = '#fff';
+  roundRect(c, bx, by, bubbleW, bubbleH, 8*scale);
+  c.fill();
+  c.strokeStyle = '#ddd';
+  c.lineWidth = 1*scale;
+  roundRect(c, bx, by, bubbleW, bubbleH, 8*scale);
+  c.stroke();
+
+  // Tail
+  c.fillStyle = '#fff';
+  c.beginPath();
+  c.moveTo(x - 6*scale, by + bubbleH - 1);
+  c.lineTo(x, by + bubbleH + 8*scale);
+  c.lineTo(x + 6*scale, by + bubbleH - 1);
+  c.closePath(); c.fill();
+
+  // Text
+  c.fillStyle = '#222';
+  c.font = `${10*scale}px sans-serif`;
+  c.textAlign = 'center';
+  for (let i = 0; i < lines.length; i++) {
+    c.fillText(lines[i], x, by + padding + (i+0.8)*lineH);
+  }
+  c.restore();
+}
+
+// ─────────────────────────────────────────────
+//  GAME LOOP
+// ─────────────────────────────────────────────
+function startLoop() {
+  if (animFrame) cancelAnimationFrame(animFrame);
+  lastTime = performance.now();
+  loop(lastTime);
+}
+
+function loop(time) {
+  const dt = Math.min((time - lastTime) / 1000, 0.1);
+  lastTime = time;
+  update(dt);
+  render(time);
+  animFrame = requestAnimationFrame(loop);
+}
+
+const MOVE_SPEED = 180; // px/sec (logical)
+
+function update(dt) {
+  for (const p of Object.values(players)) {
+    const dx = p.targetX - p.renderX;
+    const dy = p.targetY - p.renderY;
+    const dist = Math.sqrt(dx*dx + dy*dy);
+    if (dist > 1) {
+      const step = MOVE_SPEED * dt;
+      const move = Math.min(step, dist);
+      p.renderX += (dx/dist) * move;
+      p.renderY += (dy/dist) * move;
+      p.facing = dx > 0 ? 1 : -1;
+      p.walking = true;
+      p.animTick += dt * 60;
+    } else {
+      p.renderX = p.targetX;
+      p.renderY = p.targetY;
+      p.walking = false;
+    }
+  }
+}
+
+function render(time) {
+  const cw = canvas.width, ch = canvas.height;
+  ctx.clearRect(0, 0, cw, ch);
+
+  // Background
+  ctx.drawImage(getRoomBg(currentRoom), 0, 0, cw, ch);
+
+  // Portals pulse animation
+  const portals = ROOM_PORTALS[currentRoom] || [];
+  const sx = cw / W, sy = ch / H;
+  const pulse = 0.15 * Math.sin(time * 0.003) + 0.85;
+  for (const p of portals) {
+    ctx.save();
+    ctx.globalAlpha = pulse;
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2 * sx;
+    const rx = p.x*sx, ry = p.y*sy, rw = p.w*sx, rh = p.h*sy;
+    roundRect(ctx, rx, ry, rw, rh, 8*sx);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // Draw players sorted by Y (painter's algorithm)
+  const sorted = Object.values(players).sort((a,b) => a.renderY - b.renderY);
+  for (const p of sorted) {
+    drawAvatar(ctx, p, cw, ch, time);
+  }
+}
+
+// ─────────────────────────────────────────────
+//  INPUT HANDLING
+// ─────────────────────────────────────────────
+canvas.addEventListener('click', onCanvasClick);
+canvas.addEventListener('touchend', (e) => {
+  e.preventDefault();
+  const t = e.changedTouches[0];
+  const rect = canvas.getBoundingClientRect();
+  onCanvasClick({ clientX: t.clientX, clientY: t.clientY, rect });
+}, { passive: false });
+
+function onCanvasClick(e) {
+  if (!selfPlayer || !socket) return;
+  const rect = e.rect || canvas.getBoundingClientRect();
+  const cx = (e.clientX - rect.left) * (canvas.width / rect.width);
+  const cy = (e.clientY - rect.top) * (canvas.height / rect.height);
+  const lx = cx / (canvas.width / W);
+  const ly = cy / (canvas.height / H);
+
+  // Check portal clicks
+  const portals = ROOM_PORTALS[currentRoom] || [];
+  for (const p of portals) {
+    if (lx >= p.x && lx <= p.x+p.w && ly >= p.y && ly <= p.y+p.h) {
+      doChangeRoom(p.target);
+      return;
+    }
+  }
+
+  // Move
+  selfPlayer.targetX = Math.max(20, Math.min(W-20, lx));
+  selfPlayer.targetY = Math.max(20, Math.min(H-20, ly));
+  socket.emit('move', { x: selfPlayer.targetX, y: selfPlayer.targetY });
+}
+
+// Room buttons in side panel
+document.querySelectorAll('.room-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const room = btn.dataset.room;
+    if (room !== currentRoom) doChangeRoom(room);
+  });
+});
+
+let transitioning = false;
+function doChangeRoom(room) {
+  if (transitioning || room === currentRoom) return;
+  transitioning = true;
+  const overlay = document.getElementById('fadeOverlay');
+  overlay.classList.add('fade-in');
+  setTimeout(() => {
+    socket.emit('changeRoom', room);
+  }, 350);
+}
+
+function endFade() {
+  const overlay = document.getElementById('fadeOverlay');
+  setTimeout(() => {
+    overlay.classList.remove('fade-in');
+    transitioning = false;
+  }, 100);
+}
+
+// Chat
+const chatInput = document.getElementById('chatInput');
+document.getElementById('chatSend').addEventListener('click', sendChat);
+chatInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') sendChat();
+});
+
+function sendChat() {
+  const msg = chatInput.value.trim();
+  if (!msg || !socket) return;
+  chatInput.value = '';
+  socket.emit('chat', msg);
+  // Optimistic local update
+  if (selfPlayer) {
+    selfPlayer.message = msg;
+    selfPlayer.messageTime = Date.now();
+  }
+}
+
+// Prevent canvas context menu
+canvas.addEventListener('contextmenu', e => e.preventDefault());
+</script>
+</body>
+</html>
